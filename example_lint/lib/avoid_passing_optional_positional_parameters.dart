@@ -3,80 +3,47 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
-class AvoidPassingOptionalPositionalParametersVisitor
-    extends GeneralizingAstVisitor<void> {
-  final code = 'avoid_passing_optional_positional_parameters';
-  final message = 'Avoid passing optional positional parameters';
+Stream<Lint> lintAvoidOptionalPositionalParameters(
+  ResolvedUnitResult resolvedUnitResult,
+) {
+  final finder = _OptionalPositionalParametersFinder();
+  resolvedUnitResult.unit.visitChildren(finder);
 
-  final ResolvedUnitResult unit;
-  final List<Lint> lints;
+  return Stream.fromIterable(finder.foundParameters.map((parameter) => Lint(
+        code: 'avoid_passing_optional_positional_parameters',
+        message: 'Avoid passing optional positional parameters',
+        severity: LintSeverity.info,
+        location: resolvedUnitResult.lintLocationFromOffset(
+          parameter.offset,
+          length: parameter.length,
+        ),
+      )));
+}
 
-  AvoidPassingOptionalPositionalParametersVisitor(
-    this.unit,
-    this.lints,
-  );
-
-  @override
-  void visitClassDeclaration(ClassDeclaration node) {
-    super.visitClassDeclaration(node);
-  }
+class _OptionalPositionalParametersFinder extends GeneralizingAstVisitor<void> {
+  final foundParameters = <FormalParameter>[];
 
   @override
   void visitFunctionDeclaration(FunctionDeclaration node) {
-    if (node.functionExpression.parameters == null) return;
-    for (final parameter in node.functionExpression.parameters!.parameters) {
-      if (parameter.isOptionalPositional) {
-        lints.add(Lint(
-          code: code,
-          message: message,
-          severity: LintSeverity.error,
-          location: unit.lintLocationFromOffset(
-            node.declaredElement2?.nameOffset ?? 0,
-            length: node.declaredElement2?.nameLength ?? 0,
-          ),
-        ));
-        break;
-      }
-    }
+    node.functionExpression.parameters?.parameters
+        .where((parameter) => parameter.isOptionalPositional)
+        .forEach(foundParameters.add);
     super.visitFunctionDeclaration(node);
   }
 
   @override
   void visitMethodDeclaration(MethodDeclaration node) {
-    if (node.parameters == null) return;
-    for (final parameter in node.parameters!.parameters) {
-      if (parameter.isOptionalPositional) {
-        lints.add(Lint(
-          code: code,
-          message: message,
-          severity: LintSeverity.error,
-          location: unit.lintLocationFromOffset(
-            node.declaredElement2?.nameOffset ?? 0,
-            length: node.declaredElement2?.nameLength ?? 0,
-          ),
-        ));
-        break;
-      }
-    }
+    node.parameters?.parameters
+        .where((parameter) => parameter.isOptionalPositional)
+        .forEach(foundParameters.add);
     super.visitMethodDeclaration(node);
   }
 
   @override
   void visitConstructorDeclaration(ConstructorDeclaration node) {
-    for (final parameter in node.parameters.parameters) {
-      if (parameter.isOptionalPositional) {
-        lints.add(Lint(
-          code: code,
-          message: message,
-          severity: LintSeverity.error,
-          location: unit.lintLocationFromOffset(
-            node.declaredElement2?.nameOffset ?? 0,
-            length: node.declaredElement2?.nameLength ?? 0,
-          ),
-        ));
-        break;
-      }
-    }
+    node.parameters.parameters
+        .where((parameter) => parameter.isOptionalPositional)
+        .forEach(foundParameters.add);
     super.visitConstructorDeclaration(node);
   }
 }
